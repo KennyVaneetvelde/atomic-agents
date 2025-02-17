@@ -63,8 +63,22 @@ def test_initialization(agent, mock_instructor, mock_memory, mock_system_prompt_
     assert agent.system_prompt_generator == mock_system_prompt_generator
     assert agent.input_schema == BaseAgentInputSchema
     assert agent.output_schema == BaseAgentOutputSchema
-    assert agent.temperature == 0
-    assert agent.max_tokens is None
+    assert agent.model_api_parameters["temperature"] == 0
+    assert "max_tokens" not in agent.model_api_parameters
+
+
+# model_api_parameters should have priority over the deprecated temperature parameter if both are provided.
+def test_initialization_temperature_priority(mock_instructor, mock_memory, mock_system_prompt_generator):
+    config = BaseAgentConfig(
+        client=mock_instructor,
+        model="gpt-4o-mini",
+        memory=mock_memory,
+        system_prompt_generator=mock_system_prompt_generator,
+        temperature=0.5,
+        model_api_parameters={"temperature": 1.0},
+    )
+    agent = BaseAgent(config)
+    assert agent.model_api_parameters["temperature"] == 1.0
 
 
 def test_reset_memory(agent, mock_memory):
@@ -90,7 +104,6 @@ def test_get_response(agent, mock_instructor, mock_memory, mock_system_prompt_ge
         messages=[{"role": "system", "content": "System prompt"}, {"role": "user", "content": "Hello"}],
         response_model=BaseAgentOutputSchema,
         temperature=0,
-        max_tokens=None,
     )
 
 

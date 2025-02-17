@@ -77,7 +77,7 @@ provider = console.input(providers_str).lower()
 client, model = setup_client(provider)
 
 # Agent setup with specified configuration
-agent = BaseAgent(config=BaseAgentConfig(client=client, model=model, memory=memory, max_tokens=2048))
+agent = BaseAgent(config=BaseAgentConfig(client=client, model=model, memory=memory, model_api_parameters={"max_tokens": 2048}))
 
 # Generate the default system prompt for the agent
 default_system_prompt = agent.system_prompt_generator.generate_prompt()

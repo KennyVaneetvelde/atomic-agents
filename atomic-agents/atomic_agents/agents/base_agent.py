@@ -76,6 +76,7 @@ class BaseAgentConfig(BaseModel):
         None,
         description="Maximum number of token allowed in the response generation.",
     )
+    model_api_parameters: Optional[dict] = Field(None, description="Additional parameters passed to the API provider.")
 
 
 class BaseAgent:
@@ -93,7 +94,12 @@ class BaseAgent:
         memory (AgentMemory): Memory component for storing chat history.
         system_prompt_generator (SystemPromptGenerator): Component for generating system prompts.
         initial_memory (AgentMemory): Initial state of the memory.
-        max_tokens (int): Maximum number of tokens allowed in the response
+        temperature (float): Temperature for response generation, typically ranging from 0 to 1.  For models such as
+            OpenAI o3-mini that do not support temperature, you must explicitly pass 'None'.
+            DEPRECATED: Include 'temperature' in model_api_parameters instead.
+        max_tokens (int): Maximum number of tokens allowed in the response.
+            DEPRECATED: Include 'max_tokens' in model_api_parameters instead.
+        model_api_parameters (dict): Additional parameters passed to the API provider.
     """
 
     input_schema = BaseAgentInputSchema
@@ -114,8 +120,20 @@ class BaseAgent:
         self.system_prompt_generator = config.system_prompt_generator or SystemPromptGenerator()
         self.initial_memory = self.memory.copy()
         self.current_user_input = None
-        self.temperature = config.temperature
-        self.max_tokens = config.max_tokens
+        self.model_api_parameters = config.model_api_parameters or {}
+        if config.temperature is not None:
+            warnings.warn(
+                "'temperature' is deprecated and will soon be removed. Please use 'model_api_parameters' instead.",
+                DeprecationWarning,
+            )
+            if "temperature" not in self.model_api_parameters:
+                self.model_api_parameters["temperature"] = config.temperature
+        if config.max_tokens is not None:
+            warnings.warn(
+                "'max_tokens' is deprecated and will soon be removed. Please use 'model_api_parameters' instead.",
+                DeprecationWarning,
+            )
+            self.model_api_parameters["max_tokens"] = config.max_tokens
 
     def reset_memory(self):
         """
@@ -148,8 +166,7 @@ class BaseAgent:
             messages=messages,
             model=self.model,
             response_model=response_model,
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
+            **self.model_api_parameters,
         )
 
         return response
@@ -200,8 +217,7 @@ class BaseAgent:
             model=self.model,
             messages=messages,
             response_model=self.output_schema,
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
+            **self.model_api_parameters,
             stream=True,
         )
 
